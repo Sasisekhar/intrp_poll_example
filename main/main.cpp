@@ -1,20 +1,20 @@
 #include "include/cadmium/simulation/rt_root_coordinator.hpp"
 #include "include/cadmium/simulation/root_coordinator.hpp"
 #include <limits>
-#include "include/top.hpp"
-
+#include "include/gpt.hpp"
+#include "include/genr_interrupt.hpp"
+#include "include/job.hpp"
 #ifdef RT_ESP32
 	#include <include/cadmium/simulation/rt_clock/ESPclock.hpp>
 #else
 	#include <include/cadmium/simulation/rt_clock/chrono.hpp>
 #endif
-
 #ifndef NO_LOGGING
 	#include "include/cadmium/simulation/logger/stdout.hpp"
 	#include "include/cadmium/simulation/logger/csv.hpp"
 #endif
 
-using namespace cadmium::comms::example;
+using namespace cadmium::example::gpt;
 
 extern "C" {
 	#ifdef RT_ESP32
@@ -24,15 +24,20 @@ extern "C" {
 	#endif
 	{
 
-		std::shared_ptr<topSystem> model = std::make_shared<topSystem> ("topSystem");
+		std::shared_ptr<GPT> model = std::make_shared<GPT> ("gpt", 10, 0.5, 10);
 
 		#ifdef RT_ESP32
 			cadmium::ESPclock clock;
 			auto rootCoordinator = cadmium::RealTimeRootCoordinator<cadmium::ESPclock<double>>(model, clock);
 		#else
-			cadmium::ChronoClock clock;
-			auto rootCoordinator = cadmium::RealTimeRootCoordinator<cadmium::ChronoClock<std::chrono::steady_clock>>(model, clock);
-
+			cadmium::ChronoClock<std::chrono::steady_clock, Job, cadmium::example::gpt::GenrIntrHandler> clock(model);
+			auto rootCoordinator = cadmium::RealTimeRootCoordinator<
+															cadmium::ChronoClock<
+																std::chrono::steady_clock, 
+																Job, 
+																cadmium::example::gpt::GenrIntrHandler
+																>
+															>(model, clock);
 			// auto rootCoordinator = cadmium::RootCoordinator(model);
 		#endif
 

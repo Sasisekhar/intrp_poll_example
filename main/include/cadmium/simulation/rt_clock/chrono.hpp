@@ -30,7 +30,7 @@
 
 #include "../../modeling/devs/component.hpp" //for the interrupt
 #include "../../modeling/devs/coupled.hpp" //for the interrupt
-#include "../../../RGB.hpp"
+#include "../../../job.hpp"
 
 #include "interrupt_handler.hpp"
 
@@ -39,27 +39,27 @@ namespace cadmium {
      * Real-time clock based on the std::chrono library. It is suitable for Linux, MacOS, and Windows.
      * @tparam T Internal clock type. By default, it uses the std::chrono::steady_clock
      */
-    template<typename T = std::chrono::steady_clock>
+    template<typename T = std::chrono::steady_clock, typename Y = uint64_t, typename Z = InterruptHandler<Y>>
     class ChronoClock : RealTimeClock {
      protected:
         std::chrono::time_point<T> rTimeLast; //!< last real system time.
-        std::optional<typename T::duration> maxJitter; //!< Maximum allowed delay jitter. This parameter is optional.
         std::shared_ptr<Coupled> top_model;
+        std::shared_ptr<InterruptHandler<Y>> ISR_handle;
+        bool IE;
+        double startTime;
      public:
 
         //! The empty constructor does not check the accumulated delay jitter.
-        ChronoClock() : RealTimeClock(), rTimeLast(T::now()), maxJitter() {}
-
-        /**
-         * Use this constructor to select the maximum allowed delay jitter.
-         * @param maxJitter duration of the maximum allowed jitter.
-         */
-        [[maybe_unused]] explicit ChronoClock(typename T::duration maxJitter) : ChronoClock() {
-            this->maxJitter.emplace(maxJitter);
+        ChronoClock() : RealTimeClock(), rTimeLast(T::now()) {
+            this->top_model = NULL;
+            IE = false;
+            startTime = std::chrono::duration<double>(T::now().time_since_epoch()).count();
         }
 
         [[maybe_unused]] explicit ChronoClock(std::shared_ptr<Coupled> model) : ChronoClock() {
+            IE = true;
             this->top_model = model;
+            this->ISR_handle = std::make_shared<Z>();
         }
 
         /**
@@ -91,30 +91,33 @@ namespace cadmium {
                 std::chrono::duration_cast<typename T::duration>(std::chrono::duration<double>(timeNext - vTimeLast));
             rTimeLast += duration;
 
-            auto delta = std::chrono::duration_cast<typename T::duration>(std::chrono::duration<double>(timeNext - vTimeLast - 5.0));
-
-            // cadmium::Component pseudo("pseudo");
-            // cadmium::comms::example::RGB Y(32, 16, 0);
-            // cadmium::Port<cadmium::comms::example::RGB > out;
-            // out = pseudo.addOutPort<cadmium::comms::example::RGB >("out");
-            // out->addMessage(Y);
-
+            cadmium::Component pseudo("pseudo");
+            cadmium::BigPort<Y> out;
+            out = pseudo.addOutBigPort<Y>("out");
+            
             while(T::now() < rTimeLast) {
-                std::this_thread::yield();
+                if(IE){
+                    if (ISR_handle->ISRcb()) {
+                        auto data = ISR_handle->decodeISR();
+                        auto epoch = T::now().time_since_epoch();
+                        double time_now = std::chrono::duration<double>(epoch).count();
+                        cadmium::example::gpt::Job data_temp(data.id, time_now - startTime);
+                        out->addMessage(data_temp);
+                        top_model->getInPort("in")->propagate(out);
+                        rTimeLast = T::now();
+                        break;
+                    }
+                } else {
+                    std::this_thread::yield();
+                }
             }
-
-            // std::this_thread::sleep_until(rTimeLast);
 
 #ifdef DEBUG_DELAY
             std::cout << "[DELAY] " << std::chrono::duration_cast<std::chrono::microseconds>(T::now() - rTimeLast) << std::endl;
 #endif
-            if (maxJitter.has_value()) {
-                auto jitter = T::now() - rTimeLast;
-                if (jitter > maxJitter.value()) {
-                    throw cadmium::CadmiumRTClockException("delay jitter is too high");
-                }
-            }
-            return RealTimeClock::waitUntil(timeNext);
+            auto epoch = T::now().time_since_epoch();
+            double time_now = std::chrono::duration<double>(epoch).count();
+            return RealTimeClock::waitUntil(std::min(timeNext, time_now - startTime));
         }
     };
 }

@@ -1,6 +1,11 @@
-# The following lines of boilerplate have to be in your project's
-# CMakeLists in this exact order for cmake to work correctly
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.5)
 
-include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(main)
+project(GPT_Example)
+
+# Find the Paho MQTT C++ library
+find_package(PahoMqttCpp REQUIRED)
+
+add_executable(GPT main/main.cpp)
+include_directories(main)
+
+target_link_libraries(GPT PahoMqttCpp::paho-mqttpp3)
