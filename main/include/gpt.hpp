@@ -2,7 +2,7 @@
 #define CADMIUM_EXAMPLE_EFP_GPT_HPP_
 
 #include "cadmium/modeling/devs/coupled.hpp"
-// #include "generator.hpp"
+#include "generator_poll.hpp"
 #include "processor.hpp"
 #include "transducer.hpp"
 
@@ -20,7 +20,7 @@ namespace cadmium::example::gpt {
 		GPT(const std::string& id, double jobPeriod, double processingTime, double obsTime): Coupled(id) {
 			in = addInBigPort<Job>("in");
 
-			// auto generator = addComponent<Generator>("generator", jobPeriod);
+			auto generator = addComponent<Generator>("generator", jobPeriod);
 			auto processor = addComponent<Processor>("processor", processingTime);
 			auto transducer = addComponent<Transducer>("transducer", obsTime);
 

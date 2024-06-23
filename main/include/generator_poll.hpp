@@ -3,9 +3,60 @@
 
 #include "cadmium/modeling/devs/atomic.hpp"
 #include <iostream>
+#include "mqtt/async_client.h"
 #include "job.hpp"
 
+const std::string POLL_SERVER_ADDRESS { "tcp://localhost:8000" };
+const std::string POLL_CLIENT_ID { "GENR_CONSUMER_ARSLAB_POLL" };
+const std::string POLL_TOPIC { "ARSLAB/GPT" };
+const int POLL_N_RETRY_ATTEMPTS = 5;
+const int POLL_QOS = 1;
+
 namespace cadmium::example::gpt {
+	class POLL_MessageCallback : public virtual mqtt::callback, public virtual mqtt::iaction_listener {
+		public:
+			POLL_MessageCallback(mqtt::async_client& client) : cli(client), arrived(false) {}
+
+			void connected(const std::string& cause) override {
+				std::cout << "Connected (POLL)" << std::endl;
+			}
+
+			void connection_lost(const std::string& cause) override {
+				std::cout << "Connection lost (POLL): " << cause << std::endl;
+			}
+
+			void message_arrived(mqtt::const_message_ptr msg) override {
+				arrived = true;
+			}
+
+			bool hasArrived() {
+				return arrived;
+			}
+
+			void clearArrived() {
+				arrived = false;
+			}
+
+			void delivery_complete(mqtt::delivery_token_ptr token) override {
+				std::cout << "Delivery complete for token: " << (token ? token->get_message_id() : -1) << std::endl;
+			}
+
+			void on_failure(const mqtt::token& tok) override {
+				std::cout << "\nConnection attempt failed (POLL)" << std::endl;
+				if (++nretry > POLL_N_RETRY_ATTEMPTS)
+					exit(1);
+			}
+
+			void on_success(const mqtt::token& tok) override {
+				std::cout << "\nSuccessfully connected (POLL)" << std::endl;
+			}
+
+		private:
+			mqtt::async_client& cli;
+			int nretry {0};
+			bool arrived;
+	};
+
 	//! Class for representing the Generator DEVS model state.
 	struct GeneratorState {
 		double clock;  //!< Current simulation time.
@@ -31,6 +82,9 @@ namespace cadmium::example::gpt {
 	class Generator : public Atomic<GeneratorState> {
 	 private:
 		double jobPeriod;                            //!< Time to wait between Job generations.
+		mqtt::async_client cli;
+		POLL_MessageCallback cb;
+		POLL_MessageCallback* p_cb;
 	 public:
 		Port<bool> inStop;          //!< Input Port for receiving stop generating Job objects.
 		BigPort<Job> outGenerated;  //!< Output Port for sending new Job objects to be processed.
@@ -40,9 +94,37 @@ namespace cadmium::example::gpt {
 		 * @param id model ID.
 		 * @param jobPeriod Job generation period.
 		 */
-		Generator(const std::string& id, double jobPeriod): Atomic<GeneratorState>(id, GeneratorState()), jobPeriod(jobPeriod) {
+		Generator(const std::string& id, double jobPeriod): Atomic<GeneratorState>(id, GeneratorState()), 
+															jobPeriod(jobPeriod), 
+															cli(POLL_SERVER_ADDRESS, POLL_CLIENT_ID), 
+															cb(cli) {
 			inStop = addInPort<bool>("inStop");
 			outGenerated = addOutBigPort<Job>("outGenerated");
+
+			cli.set_callback(cb);
+			
+            auto connOpts = mqtt::connect_options_builder()
+                .clean_session(true)
+                .finalize();
+
+            try {
+                std::cout << "Connecting to the MQTT server (POLL)..." << std::endl;
+                auto tok = cli.connect(connOpts);
+                tok->wait();  // Wait for the connection to complete
+                auto rsp = tok->get_connect_response();
+
+                if (!rsp.is_session_present()) {
+                    cli.subscribe(POLL_TOPIC, POLL_QOS)->wait();
+                } else {
+                    std::cout << "Session already present. Skipping subscription. (POLL)" << std::endl;
+                }
+            }
+            catch (const mqtt::exception& exc) {
+                std::cerr << "\nERROR: Unable to connect to MQTT server (POLL): '"
+                    << POLL_SERVER_ADDRESS << "' " << exc.what() << std::endl;
+            }
+
+			p_cb = &cb;
 		}
 
 		/**
@@ -50,9 +132,13 @@ namespace cadmium::example::gpt {
 		 * @param s reference to the current generator model state.
 		 */
 		void internalTransition(GeneratorState& s) const override {
+			if(this->p_cb->hasArrived()){
+				s.jobCount += 1;
+				this->p_cb->clearArrived();
+			}
+
 			s.clock += s.sigma;
 			s.sigma = jobPeriod;
-			s.jobCount += 1;
 		}
 
 		/**
@@ -76,8 +162,9 @@ namespace cadmium::example::gpt {
 		 * @param y reference to the atomic model output port set.
 		 */
 		void output(const GeneratorState& s) const override {
-			outGenerated->addMessage(s.jobCount, s.clock + s.sigma);
-			// outGenerated->addMessage(Job(s.jobCount, s.clock + s.sigma)); // TODO we could also do this
+			if(this->p_cb->hasArrived()){
+				outGenerated->addMessage(s.jobCount, s.clock + s.sigma);
+			}
 		}
 
 		/**

@@ -24,7 +24,7 @@ extern "C" {
 	#endif
 	{
 
-		std::shared_ptr<GPT> model = std::make_shared<GPT> ("gpt", 10, 0.5, 10);
+		std::shared_ptr<GPT> model = std::make_shared<GPT> ("gpt", 3, 0.5, 10);
 
 		#ifdef RT_ESP32
 			cadmium::ESPclock clock;
@@ -51,7 +51,7 @@ extern "C" {
 		#ifdef RT_ESP32
 		rootCoordinator.simulate(std::numeric_limits<double>::infinity());
 		#else
-		rootCoordinator.simulate(23.0);
+		rootCoordinator.simulate(11.0);
 		#endif
 
 		rootCoordinator.stop();	
