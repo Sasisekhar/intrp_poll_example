@@ -1,20 +1,28 @@
 | Tested Targets | ESP32 | ESP32-S3 |
 | -------------- | ----- | -------- |
 
-# _Traffic Light_
+# _Interrupt-Poll Example_
 
-This is the a simple traffic light system example. The model can be simulated using the CADMIUM DEVS simulator, and can be executed on the ESP32S3
+This example helps to compare the performance of recieveing input via interrupts vs polls. The model can be simulated using the CADMIUM DEVS simulator, and can be executed on the ESP32S3
 
 ## How to use example
-For building and simulating the project, run the following command from the root directory:
+
+This example is meant to run on Linux.
+
+For dependancies, run (pay attention, you will be asked for your password):
 ```sh
-make sim
+./install_dependencies.sh
 ```
-For building, flashing and monitoring the execution of the model on an ESP32S3, run the following command:
+The only external dependency is pahomqtt for c++
+
+For building the project, run:
 ```sh
-. ~/esp/esp-idf/export.sh #or wherever you have installed ESP-IDF
-idf.py set-target esp32s3
-make embedded #Assumes your ESP32 is connected to port /dev/ttyACM0
+cmake .
+make
+```
+For running:
+```sh
+./GPT
 ```
 
 ## Example folder contents

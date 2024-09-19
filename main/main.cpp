@@ -1,14 +1,9 @@
 #include "include/cadmium/simulation/rt_root_coordinator.hpp"
-#include "include/cadmium/simulation/root_coordinator.hpp"
-#include <limits>
 #include "include/gpt.hpp"
-#include "include/genr_interrupt.hpp"
+#include "include/genr_interrupt_handler.hpp"
 #include "include/job.hpp"
-#ifdef RT_ESP32
-	#include <include/cadmium/simulation/rt_clock/ESPclock.hpp>
-#else
-	#include <include/cadmium/simulation/rt_clock/chrono.hpp>
-#endif
+#include <include/cadmium/simulation/rt_clock/chrono.hpp>
+
 #ifndef NO_LOGGING
 	#include "include/cadmium/simulation/logger/stdout.hpp"
 	#include "include/cadmium/simulation/logger/csv.hpp"
@@ -16,49 +11,31 @@
 
 using namespace cadmium::example::gpt;
 
-extern "C" {
-	#ifdef RT_ESP32
-		void app_main() //starting point for ESP32 code
-	#else
-		int main()		//starting point for simulation code
-	#endif
-	{
+int main() {
 
-		std::shared_ptr<GPT> model = std::make_shared<GPT> ("gpt", 3, 0.5, 10);
+	double observation_time = 20.0;
 
-		#ifdef RT_ESP32
-			cadmium::ESPclock clock;
-			auto rootCoordinator = cadmium::RealTimeRootCoordinator<cadmium::ESPclock<double>>(model, clock);
-		#else
-			cadmium::ChronoClock<std::chrono::steady_clock, Job, cadmium::example::gpt::GenrIntrHandler> clock(model);
-			auto rootCoordinator = cadmium::RealTimeRootCoordinator<
+	std::shared_ptr<GPT> model = std::make_shared<GPT> ("gpt", 3, 0.5, observation_time);
+
+	cadmium::ChronoClock<std::chrono::steady_clock, Job, cadmium::example::gpt::GenrIntrHandler> clock(model);
+	auto rootCoordinator = cadmium::RealTimeRootCoordinator<
 															cadmium::ChronoClock<
 																std::chrono::steady_clock, 
 																Job, 
 																cadmium::example::gpt::GenrIntrHandler
 																>
-															>(model, clock);
-			// auto rootCoordinator = cadmium::RootCoordinator(model);
-		#endif
+															> (model, clock);
 
-		#ifndef NO_LOGGING
-		rootCoordinator.setLogger<cadmium::STDOUTLogger>(";");
-		// rootCoordinator.setLogger<cadmium::CSVLogger>("trafficLightLog.csv", ";");
-		#endif
+	#ifndef NO_LOGGING
+	rootCoordinator.setLogger<cadmium::STDOUTLogger>(";");
+	#endif
 
-		rootCoordinator.start();
+	rootCoordinator.start();
 
-		#ifdef RT_ESP32
-		rootCoordinator.simulate(std::numeric_limits<double>::infinity());
-		#else
-		rootCoordinator.simulate(11.0);
-		#endif
+	rootCoordinator.simulate(observation_time + 1.0);
 
-		rootCoordinator.stop();	
+	rootCoordinator.stop();	
 
-		#ifndef RT_ESP32
-						return 0;
-		#endif
-	}
+	return 0;
 }
 

@@ -1,8 +1,12 @@
 #ifndef CADMIUM_EXAMPLE_EFP_GPT_HPP_
 #define CADMIUM_EXAMPLE_EFP_GPT_HPP_
 
+// #define INTERRUPT_ENABLED 1
+
 #include "cadmium/modeling/devs/coupled.hpp"
-#include "generator_poll.hpp"
+#ifndef INTERRUPT_ENABLED
+	#include "generator_poll.hpp"
+#endif
 #include "processor.hpp"
 #include "transducer.hpp"
 
@@ -20,14 +24,19 @@ namespace cadmium::example::gpt {
 		GPT(const std::string& id, double jobPeriod, double processingTime, double obsTime): Coupled(id) {
 			in = addInBigPort<Job>("in");
 
-			auto generator = addComponent<Generator>("generator", jobPeriod);
 			auto processor = addComponent<Processor>("processor", processingTime);
 			auto transducer = addComponent<Transducer>("transducer", obsTime);
 
-			addCoupling(in, processor->inGenerated);
-			addCoupling(in, transducer->inGenerated);
 			addCoupling(processor->outProcessed, transducer->inProcessed);
-			// addCoupling(transducer->outStop, generator->inStop);
+
+			#ifdef INTERRUPT_ENABLED
+				addCoupling(in, processor->inGenerated);
+				addCoupling(in, transducer->inGenerated);
+			#else
+				auto generator = addComponent<Generator>("generator", jobPeriod);
+				addCoupling(generator->outGenerated, processor->inGenerated);
+				addCoupling(generator->outGenerated, transducer->inGenerated);
+			#endif
 		}
 	};
 }  //namespace cadmium::example::gpt

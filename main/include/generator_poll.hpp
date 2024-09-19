@@ -6,7 +6,7 @@
 #include "mqtt/async_client.h"
 #include "job.hpp"
 
-const std::string POLL_SERVER_ADDRESS { "tcp://localhost:8000" };
+const std::string POLL_SERVER_ADDRESS { "mqtt://broker.hivemq.com:1883" };
 const std::string POLL_CLIENT_ID { "GENR_CONSUMER_ARSLAB_POLL" };
 const std::string POLL_TOPIC { "ARSLAB/GPT" };
 const int POLL_N_RETRY_ATTEMPTS = 5;

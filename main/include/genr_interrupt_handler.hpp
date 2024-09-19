@@ -5,7 +5,7 @@
 #include "mqtt/async_client.h"
 #include "job.hpp"
 
-const std::string SERVER_ADDRESS { "tcp://localhost:8000" };
+const std::string SERVER_ADDRESS { "mqtt://broker.hivemq.com:1883" };
 const std::string CLIENT_ID { "GENR_CONSUMER_ARSLAB" };
 const std::string TOPIC { "ARSLAB/GPT" };
 const int N_RETRY_ATTEMPTS = 5;
