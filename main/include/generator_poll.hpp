@@ -27,6 +27,7 @@ namespace cadmium::example::gpt {
 
 			void message_arrived(mqtt::const_message_ptr msg) override {
 				arrived = true;
+				// std::cout << "Message arrived" << std::endl;
 			}
 
 			bool hasArrived() {

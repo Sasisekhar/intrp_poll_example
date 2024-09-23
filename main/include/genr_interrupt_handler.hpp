@@ -27,6 +27,7 @@ class MessageCallback : public virtual mqtt::callback, public virtual mqtt::iact
 
         void message_arrived(mqtt::const_message_ptr msg) override {
             arrived = true;
+            std::cout << "Message Arrived" << std::endl;
         }
 
         bool hasArrived() {

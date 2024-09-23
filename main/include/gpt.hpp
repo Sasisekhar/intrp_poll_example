@@ -1,7 +1,7 @@
 #ifndef CADMIUM_EXAMPLE_EFP_GPT_HPP_
 #define CADMIUM_EXAMPLE_EFP_GPT_HPP_
 
-// #define INTERRUPT_ENABLED 1
+#define INTERRUPT_ENABLED 1
 
 #include "cadmium/modeling/devs/coupled.hpp"
 #ifndef INTERRUPT_ENABLED
