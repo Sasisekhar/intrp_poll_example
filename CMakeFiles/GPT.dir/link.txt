@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/GPT.dir/main/main.cpp.o -o GPT  -Wl,-rpath,/usr/local/lib /usr/local/lib/libpaho-mqttpp3.so.1.4.0 /usr/local/lib/libpaho-mqtt3as.so.1.3.13 /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so -lc -ldl -lpthread -lrt -lanl 

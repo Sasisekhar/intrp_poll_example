@@ -1,9 +1,8 @@
-#ifndef GENR_INTERRUPT_HANDLER_HPP
-#define GENR_INTERRUPT_HANDLER_HPP
+#ifndef MQTT_INTERRUPT_HANDLER_HPP
+#define MQTT_INTERRUPT_HANDLER_HPP
 
 #include "cadmium/simulation/rt_clock/interrupt_handler.hpp"
 #include "mqtt/async_client.h"
-#include "job.hpp"
 
 const std::string SERVER_ADDRESS { "mqtt://broker.hivemq.com:1883" };
 const std::string CLIENT_ID { "GENR_CONSUMER_ARSLAB" };
@@ -58,14 +57,14 @@ class MessageCallback : public virtual mqtt::callback, public virtual mqtt::iact
         bool arrived;
 };
 
-class GenrIntrHandler : public InterruptHandler<Job> {
+class MQTTIntrHandler : public InterruptHandler<int> {
     private:
         mqtt::async_client cli;
         MessageCallback cb;
         int count;
 
     public:
-        GenrIntrHandler() : cli(SERVER_ADDRESS, CLIENT_ID), cb(cli) {
+        MQTTIntrHandler() : cli(SERVER_ADDRESS, CLIENT_ID), cb(cli) {
             count = 0;
             cli.set_callback(cb);
 
@@ -99,9 +98,8 @@ class GenrIntrHandler : public InterruptHandler<Job> {
             return false;
         }
 
-        Job decodeISR() {
-            Job k(count++, 2);
-            return k;
+        int decodeISR() {
+            return 10;
         }
     };
 }

@@ -1,28 +1,25 @@
-#include "include/cadmium/simulation/rt_root_coordinator.hpp"
-#include "include/gpt.hpp"
-#include "include/genr_interrupt_handler.hpp"
-#include "include/job.hpp"
-#include <include/cadmium/simulation/rt_clock/chrono.hpp>
+#include "cadmium/simulation/rt_root_coordinator.hpp"
+#include "include/top.hpp"
+#include "include/MQTT_interrupt_handler.hpp"
+#include "cadmium/simulation/rt_clock/chrono.hpp"
 
 #ifndef NO_LOGGING
-	#include "include/cadmium/simulation/logger/stdout.hpp"
-	#include "include/cadmium/simulation/logger/csv.hpp"
+	#include "cadmium/simulation/logger/stdout.hpp"
+	#include "cadmium/simulation/logger/csv.hpp"
 #endif
 
 using namespace cadmium::example::gpt;
 
 int main() {
 
-	double observation_time = 20.0;
+	auto model = std::make_shared<top> ("top");
 
-	std::shared_ptr<GPT> model = std::make_shared<GPT> ("gpt", 3, 0.5, observation_time);
-
-	cadmium::ChronoClock<std::chrono::steady_clock, Job, cadmium::example::gpt::GenrIntrHandler> clock(model);
+	cadmium::ChronoClock<std::chrono::steady_clock, int, cadmium::example::gpt::MQTTIntrHandler> clock(model);
 	auto rootCoordinator = cadmium::RealTimeRootCoordinator<
 															cadmium::ChronoClock<
 																std::chrono::steady_clock, 
-																Job, 
-																cadmium::example::gpt::GenrIntrHandler
+																int, 
+																cadmium::example::gpt::MQTTIntrHandler
 																>
 															> (model, clock);
 
@@ -32,7 +29,7 @@ int main() {
 
 	rootCoordinator.start();
 
-	rootCoordinator.simulate(observation_time + 1.0);
+	rootCoordinator.simulate(std::numeric_limits<double>::infinity());
 
 	rootCoordinator.stop();	
 
